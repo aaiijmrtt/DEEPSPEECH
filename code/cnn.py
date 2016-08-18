@@ -1,30 +1,41 @@
-import tensorflow as tf
+import math, tensorflow as tf
 
-def cnn(model, config, scope, inputs = None):
-	sizes = {size: config.getint(scope, size + '_size') for size in ['batch', 'input', 'time', 'layer']}
-
+def cnn(model, config, scope, connect = None):
 	with tf.variable_scope(scope), tf.name_scope(scope):
 		with tf.variable_scope('inputs'), tf.name_scope('inputs'):
-			if inputs is None: inputs = tf.placeholder(tf.float32, [sizes['time'], sizes['batch'], sizes['input']], scope + '_inputs')
-			model[scope + '_inputs'] = inputs
-			model[scope + '_transform'] = tf.transpose(tf.reshape(model[scope + '_inputs'], [sizes['time'], sizes['batch'], sizes['input'], 1]), [1, 0, 2, 3])
+			sizes = {size: config.getint(scope, '%s_size' %size) for size in ['clength', 'cstep', 'plength', 'pstep']}
+			if connect is None:
+				model['%s_in0length' %scope] = config.getint(scope, 'batch_size')
+				model['%s_in1length' %scope] = config.getint(scope, 'input_size')
+				model['%s_in2length' %scope] = tf.placeholder(tf.int32, [config.getint(scope, 'batch_size')], '%s_in2length' %scope)
+				model['%s_inputs' %scope] = tf.placeholder(tf.float32, [config.getint(scope, 'time_size'), in0length, in1length], '%s_inputs' %scope)
+			else:
+				model['%s_in0length' %scope] = model['%s_out0length' %connect]
+				model['%s_in1length' %scope] = model['%s_out1length' %connect]
+				model['%s_in2length' %scope] = model['%s_out2length' %connect]
+				model['%s_inputs' %scope] = model['%s_outputs' %connect]
+			model['%s_transform' %scope] = tf.transpose(tf.reshape(model['%s_inputs' %scope], [config.getint(scope, 'time_size'), model['%s_in0length' %scope], model['%s_in1length' %scope], 1]), [1, 0, 2, 3], '%s_transform' %scope)
+			model['%s_out1length' %scope] = model['%s_in1length' %scope]
+			model['%s_out2length' %scope] = model['%s_in2length' %scope]
 
-		for _ in xrange(sizes['layer']):
-			if _ == 0: model[scope + '_transform' + str(_)] = model[scope + '_transform']
-			else: model[scope + '_transform' + str(_)] = model[scope + '_pooling' + str(_ - 1)]
+		for _ in xrange(config.getint(scope, 'layer_size')):
+			if _ == 0: model['%s_transform%i' %(scope, _)] = model['%s_transform' %scope]
+			else: model['%s_transform%i' %(scope, _)] = model['%s_pooling%i' %(scope, _ - 1)]
 
-			with tf.variable_scope('filter' + str(_)), tf.name_scope('filter' + str(_)):
-				sizes.update({size + str(_): config.getint(scope, size + str(_) + '_size') for size in ['c1length', 'c2length', 'c1step', 'c2step', 'p1length', 'p2length', 'p1step', 'p2step']})
-				model[scope + '_filter' + str(_)] = tf.Variable(tf.truncated_normal([sizes['c1length' + str(_)], sizes['c2length' + str(_)], 1, 1]))
-				model[scope + '_stride' + str(_)] = [1, sizes['c1step' + str(_)], sizes['c2step' + str(_)], 1]
+			with tf.variable_scope('filter%i' %_), tf.name_scope('filter%s' %_):
+				model['%s_filter%i' %(scope, _)] = tf.Variable(tf.truncated_normal([sizes['clength'], sizes['clength'], 1, 1]))
+				model['%s_stride%i' %(scope, _)] = [1, sizes['cstep'], sizes['cstep'], 1]
 
-			with tf.variable_scope('convolution' + str(_)), tf.name_scope('convolution' + str(_)):
-				model[scope + '_convolution' + str(_)] = tf.nn.conv2d(model[scope + '_transform' + str(_)], model[scope + '_filter' + str(_)], model[scope + '_stride' + str(_)], 'VALID')
-				if config.get(scope, 'pool' + str(_)) == 'max': pool = tf.nn.max_pool
-				elif config.get(scope, 'pool' + str(_)) == 'avg': pool = tf.nn.avg_pool
-				model[scope + '_pooling' + str(_)] = pool(model[scope + '_convolution' + str(_)], [1, sizes['p1length' + str(_)], sizes['p2length' + str(_)], 1], [1, sizes['p1step' + str(_)], sizes['p2step' + str(_)], 1], 'VALID')
+			with tf.variable_scope('convolution%i' %_), tf.name_scope('convolution%i' %_):
+				model['%s_convolution%i' %(scope, _)] = tf.nn.conv2d(model['%s_transform%i' %(scope, _)], model['%s_filter%i' %(scope, _)], model['%s_stride%i' %(scope, _)], 'VALID')
+				model['%s_out1length' %scope] = int(math.ceil(float(model['%s_out1length' %scope] - sizes['clength'] + 1) / float(sizes['cstep'])))
+				model['%s_out2length' %scope] = tf.to_int32(tf.ceil(tf.div(tf.to_float(tf.sub(model['%s_out2length' %scope], sizes['clength'] - 1)), tf.to_float(sizes['cstep']))))
+				model['%s_pooling%i' %(scope, _)] = getattr(tf.nn, '%s_pool' %config.get(scope, 'pool'))(model['%s_convolution%i' %(scope, _)], [1, sizes['plength'], sizes['plength'], 1], [1, sizes['pstep'], sizes['pstep'], 1], 'VALID')
+				model['%s_out1length' %scope] = int(math.ceil(float(model['%s_out1length' %scope] - sizes['plength'] + 1) / float(sizes['pstep'])))
+				model['%s_out2length' %scope] = tf.to_int32(tf.ceil(tf.div(tf.to_float(tf.sub(model['%s_out2length' %scope], sizes['plength'] - 1)), tf.to_float(sizes['pstep']))))
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
-			model[scope + '_outputs'] = tf.transpose(tf.squeeze(model[scope + '_pooling' + str(_)], [3], scope + '_outputs'), [1, 0, 2])
+			model['%s_outputs' %scope] = tf.transpose(tf.squeeze(model['%s_pooling%i' %(scope, _)], [3], '%s_outputs' %scope), [1, 0, 2])
+			model['%s_out0length' %scope] = model['%s_in0length' %scope]
 
 	return model
