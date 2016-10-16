@@ -20,22 +20,12 @@ def rnn(model, config, scope, connect = None):
 			model['%s_out2length' %scope] = model['%s_in2length' %scope]
 			model['%s_maxout2length' %scope] = model['%s_maxin2length' %scope]
 
-		with tf.variable_scope('initializers'), tf.name_scope('initializers'):
-			if config.get(scope, 'cell_type') in ['BasicRNNCell', 'GRUCell']: factor = 1
-			elif config.get(scope, 'cell_type') in ['BasicLSTMCell', 'LSTMCell']: factor = 2
-
-			if config.get(scope, 'link_type') == 'rnn':
-				model['%s_init' %scope] = tf.Variable(tf.truncated_normal([model['%s_in0length' %scope], factor * model['%s_out1length' %scope] * config.getint(scope, 'layer_size')]), '%s_init' %scope)
-			elif config.get(scope, 'link_type') == 'bidirectional_rnn':
-				model['%s_init_fw' %scope] = tf.Variable(tf.truncated_normal([model['%s_in0length' %scope], factor * model['%s_out1length' %scope] * config.getint(scope, 'layer_size')]), '%s_init_fw' %scope)
-				model['%s_init_bw' %scope] = tf.Variable(tf.truncated_normal([model['%s_in0length' %scope], factor * model['%s_out1length' %scope] * config.getint(scope, 'layer_size')]), '%s_init_bw' %scope)
-
 		with tf.variable_scope('cells'), tf.name_scope('cells'):
 			if config.get(scope, 'link_type') == 'rnn':
-				model['%s_rnn' %scope] = getattr(tf.nn.rnn_cell, config.get(scope, 'cell_type'))(model['%s_out1length' %scope])
+				model['%s_rnn' %scope] = getattr(tf.nn.rnn_cell, config.get(scope, 'cell_type'))(model['%s_out1length' %scope], state_is_tuple = True)
 			elif config.get(scope, 'link_type') == 'bidirectional_rnn':
-				model['%s_rnn_fw' %scope] = getattr(tf.nn.rnn_cell, config.get(scope, 'cell_type'))(model['%s_out1length' %scope])
-				model['%s_rnn_bw' %scope] = getattr(tf.nn.rnn_cell, config.get(scope, 'cell_type'))(model['%s_out1length' %scope])
+				model['%s_rnn_fw' %scope] = getattr(tf.nn.rnn_cell, config.get(scope, 'cell_type'))(model['%s_out1length' %scope], state_is_tuple = True)
+				model['%s_rnn_bw' %scope] = getattr(tf.nn.rnn_cell, config.get(scope, 'cell_type'))(model['%s_out1length' %scope], state_is_tuple = True)
 
 		with tf.variable_scope('stacks'), tf.name_scope('stacks'):
 			if config.get(scope, 'link_type') == 'rnn':
@@ -46,14 +36,15 @@ def rnn(model, config, scope, connect = None):
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
 			if config.get(scope, 'link_type') == 'rnn':
-				outputs, state = getattr(tf.nn, config.get(scope, 'link_type'))(model['%s_rnns' %scope], model['%s_inputs' %scope], model['%s_init' %scope], tf.float32, model['%s_in2length' %scope])
+				outputs, state = getattr(tf.nn, config.get(scope, 'link_type'))(model['%s_rnns' %scope], model['%s_inputs' %scope], dtype = tf.float32, sequence_length = model['%s_in2length' %scope])
 				model['%s_outputs' %scope] = tf.pack(outputs, 0, '%s_outputs' %scope)
-				model['%s_state' %scope] = tf.pack(state, 0, '%s_state' %scope)
+				model['%s_state' %scope] = state[0]
 			elif config.get(scope, 'link_type') == 'bidirectional_rnn':
-				outputs, state_fw, state_bw = getattr(tf.nn, config.get(scope, 'link_type'))(model['%s_rnns_fw' %scope], model['%s_rnns_bw' %scope], model['%s_inputs' %scope], model['%s_init_fw' %scope], model['%s_init_bw' %scope], tf.float32, model['%s_in2length' %scope])
+				outputs, state_fw, state_bw = getattr(tf.nn, config.get(scope, 'link_type'))(cell_fw = model['%s_rnns_fw' %scope], cell_bw = model['%s_rnns_bw' %scope], inputs = model['%s_inputs' %scope], dtype = tf.float32, sequence_length = model['%s_in2length' %scope])
 				model['%s_outputs' %scope] = tf.pack(outputs, 0, '%s_outputs' %scope)
-				model['%s_state_fw' %scope] = tf.pack(state_fw, 0, '%s_state_fw' %scope)
-				model['%s_state_bw' %scope] = tf.pack(state_bw, 0, '%s_state_bw' %scope)
+				model['%s_state_c' %scope] = tf.concat(1, [state_fw[0][0], state_bw[0][0]], '%s_state_c' %scope)
+				model['%s_state_h' %scope] = tf.concat(1, [state_fw[0][1], state_bw[0][1]], '%s_state_h' %scope)
+				model['%s_state' %scope] = (model['%s_state_c' %scope], model['%s_state_h' %scope])
 
 			if config.get(scope, 'link_type') == 'bidirectional_rnn':
 				model['%s_out1length' %scope] *= 2
