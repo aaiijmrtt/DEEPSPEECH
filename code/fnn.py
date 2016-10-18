@@ -21,17 +21,19 @@ def fnn(model, config, scope, connect = None):
 			model['%s_maxout2length' %scope] = model['%s_maxin2length' %scope]
 
 		with tf.variable_scope('parameters'), tf.name_scope('parameters'):
-			for _ in xrange(config.getint(scope, 'layer_size')):
-				model['%s_weights%i' %(scope, _)] = tf.Variable(tf.truncated_normal([model['%s_in1length' %scope], model['%s_out1length' %scope]]), name = '%s_weights%i' %(scope, _))
-				model['%s_biases%i' %(scope, _)] = tf.Variable(tf.truncated_normal([1, model['%s_out1length' %scope]]), name = '%s_biases%i' %(scope, _))
+			for _ in xrange(config.getint(scope, 'layer_size') - 1):
+				model['%s_weights%i' %(scope, _)] = tf.Variable(tf.truncated_normal([model['%s_in1length' %scope], model['%s_in1length' %scope]]), name = '%s_weights%i' %(scope, _))
+				model['%s_biases%i' %(scope, _)] = tf.Variable(tf.truncated_normal([1, model['%s_in1length' %scope]]), name = '%s_biases%i' %(scope, _))
+			model['%s_weights%i' %(scope, config.getint(scope, 'layer_size') - 1)] = tf.Variable(tf.truncated_normal([model['%s_in1length' %scope], model['%s_out1length' %scope]]), name = '%s_weights%i' %(scope, config.getint(scope, 'layer_size') - 1))
+			model['%s_biases%i' %(scope, config.getint(scope, 'layer_size') - 1)] = tf.Variable(tf.truncated_normal([1, model['%s_out1length' %scope]]), name = '%s_biases%i' %(scope, config.getint(scope, 'layer_size') - 1))
 
-		def ff(acc, inp):
+		def ff(inp):
 			for _ in xrange(config.getint(scope, 'layer_size')):
 				inp = getattr(tf.nn, config.get(scope, 'active_type'))(tf.add(tf.matmul(inp, model['%s_weights%i' %(scope, _)]), model['%s_biases%i' %(scope, _)]), '%s_feedforward%i' %(scope, _))
 			return inp
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
-			model['%s_scan' %scope] = tf.scan(ff, model['%s_inputs' %scope], tf.zeros([model['%s_in0length' %scope], model['%s_in1length' %scope]]), name = '%s_scan' %scope)
-			model['%s_outputs' %scope] = tf.reshape(model['%s_scan' %scope], [model['%s_maxout2length' %scope], model['%s_out0length' %scope], model['%s_out1length' %scope]])
+			model['%s_scan' %scope] = tf.map_fn(ff, model['%s_inputs' %scope], tf.float32, name = '%s_scan' %scope)
+			model['%s_outputs' %scope] = tf.transpose(model['%s_scan' %scope], [1, 0, 2], '%s_outputs' %scope)
 
 	return model
