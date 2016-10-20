@@ -1,13 +1,14 @@
 import configparser, sys, os
 import tensorflow as tf, numpy as np
-import fnn, rnn, cnn, ctc, util
+import fnn, rnn, ctc, util
 
 def ds(config):
 	model = dict()
 
 	model = fnn.fnn(model, config, 'fnn')
 	model = rnn.rnn(model, config, 'rnn', 'fnn')
-	model = ctc.ctc(model, config, 'ctc', 'rnn')
+	model = fnn.fnn(model, config, 'map', 'rnn')
+	model = ctc.ctc(model, config, 'ctc', 'map')
 
 	model['step'] = tf.Variable(0, trainable = False, name = 'step')
 	model['lrate'] = tf.train.exponential_decay(config.getfloat('global', 'lrate'), model['step'], config.getint('global', 'dstep'), config.getfloat('global', 'drate'), staircase = False, name = 'lrate')
