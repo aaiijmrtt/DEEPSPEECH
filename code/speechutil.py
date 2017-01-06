@@ -7,11 +7,11 @@ def prep(config, dirname):
 	for dirpath, dirnames, filenames in os.walk(dirname):
 		for filename in filenames:
 			if filename.endswith('.flac'):
-				file = os.path.join(dirpath, filename)
-				_mfcc = mfcc.audio2MFCC(file, config)
+				_file = os.path.join(dirpath, filename)
+				_mfcc = mfcc.audio2MFCC(_file, config)
 				_delta = mfcc.MFCC2delta(_mfcc)
 				_augmented = np.vstack([_mfcc, _delta])
-				np.savetxt('%s_%i.mfcc' %(file[: -5], mfcc_size), _augmented)
+				np.savetxt('%s_%i.mfcc' %(_file[: -5], mfcc_size), _augmented)
 
 def filtertext(char):
 	return char.isalpha() or char.isspace()
@@ -44,7 +44,7 @@ def train(model, sess, config, dirname, feed):
 def test(model, sess, config, dirname, feed):
 	features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 	batch_size, time_size, mfcc_size = config.getint('global', 'batch_size'), config.getint('global', 'time_size'), config.getint('mfcc', 'n_mfcc')
-	ctc_loss, inf_count = 0.0, 0
+	total_loss, inf_count = 0.0, 0
 
 	for dirpath, dirnames, filenames in os.walk(dirname):
 		for filename in filenames:
@@ -58,9 +58,9 @@ def test(model, sess, config, dirname, feed):
 					features.append(np.loadtxt(os.path.join(dirpath, '%s_%i.mfcc' %(line.split()[0], mfcc_size))))
 
 					if lenfeatures + 1 == batch_size:
-						loss = sess.run(model['ctc_loss'], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
+						loss = sess.run(model['loss'], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
 						if loss == float('inf'): inf_count += 1
-						else: ctc_loss += loss
+						else: total_loss += loss
 						features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 
-	return ctc_loss, inf_count
+	return total_loss, inf_count

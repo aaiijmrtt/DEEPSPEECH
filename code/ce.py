@@ -7,7 +7,7 @@ def ce(model, config, scope, connect):
 			model['%s_in1length' %scope] = model['%s_out1length' %connect]
 			model['%s_in2length' %scope] = model['%s_out2length' %connect]
 			model['%s_maxin2length' %scope] = model['%s_maxout2length' %connect]
-			model['%s_inputs' %scope] = tf.nn.softmax(model['%s_outputs' %connect], 2, name = '%s_inputs' %scope)
+			model['%s_inputs' %scope] = tf.nn.softmax(model['%s_outputs' %connect], name = '%s_inputs' %scope)
 			model['%s_out0length' %scope] = model['%s_in0length' %scope]
 			model['%s_out1length' %scope] = model['%s_in1length' %scope]
 			model['%s_out2length' %scope] = tf.placeholder(tf.int32, [model['%s_in0length' %scope]], '%s_out2length' %scope)

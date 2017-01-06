@@ -1,6 +1,6 @@
 import configparser, sys, os
 import tensorflow as tf, numpy as np
-import fnn, rnn, cnn, ctc, util
+import fnn, rnn, cnn, ctc, speechutil
 
 def ds2(config):
 	model = dict()
@@ -10,9 +10,10 @@ def ds2(config):
 	model = fnn.fnn(model, config, 'fnn', 'rnn')
 	model = ctc.ctc(model, config, 'ctc', 'fnn')
 
+	model['loss'] = model['ctc_loss']
 	model['step'] = tf.Variable(0, trainable = False, name = 'step')
 	model['lrate'] = tf.train.exponential_decay(config.getfloat('global', 'lrate'), model['step'], config.getint('global', 'dstep'), config.getfloat('global', 'drate'), staircase = False, name = 'lrate')
-	model['optim'] = getattr(tf.train, config.get('global', 'optim'))(model['lrate']).minimize(model['ctc_loss'], global_step = model['step'], name = 'optim')
+	model['optim'] = getattr(tf.train, config.get('global', 'optim'))(model['lrate']).minimize(model['loss'], global_step = model['step'], name = 'optim')
 
 	return model
 
@@ -28,6 +29,6 @@ if __name__ == '__main__':
 
 	with tf.Session() as sess:
 		sess.run(tf.initialize_all_variables())
-		util.train(model, sess, config, sys.argv[2], feed)
-		print util.test(model, sess, config, sys.argv[2], feed)
+		speechutil.train(model, sess, config, sys.argv[2], feed)
+		print speechutil.test(model, sess, config, sys.argv[3], feed)
 		tf.train.Saver().save(sess, os.path.join(config.get('global', 'path'), 'model'))
