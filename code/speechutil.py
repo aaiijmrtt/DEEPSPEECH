@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import mfcc
 
 def prep(config, dirname):
 	mfcc_size = config.getint('mfcc', 'n_mfcc')
