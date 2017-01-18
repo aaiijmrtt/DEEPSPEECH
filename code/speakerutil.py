@@ -1,4 +1,4 @@
-import os
+import os, math
 import numpy as np
 import mfcc
 
@@ -52,11 +52,11 @@ def train(model, sess, config, dirname, feed):
 
 			if lenfeatures + 1 == batch_size:
 				loss, _ = sess.run([model['loss'], model['optim']], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
-				if loss == :
+				if math.isinf(loss) or math.isnan(loss): inf_count += 1
 				else: total_loss += loss
 				features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 
-	return loss
+	return total_loss, inf_count
 
 def test(model, sess, config, dirname, feed, devtest = True):
 	features, labelslen, labelsind, labelsval = list(), list(), list(), list()
@@ -74,7 +74,7 @@ def test(model, sess, config, dirname, feed, devtest = True):
 
 			if lenfeatures + 1 == batch_size:
 				loss = sess.run(model['loss'], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
-				if loss == float('inf'): inf_count += 1
+				if math.isinf(loss) or math.isnan(loss): inf_count += 1
 				else: total_loss += loss
 				features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 

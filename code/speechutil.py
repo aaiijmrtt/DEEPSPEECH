@@ -1,4 +1,4 @@
-import os
+import os, math
 import numpy as np
 import mfcc
 
@@ -26,6 +26,7 @@ def maptext(char):
 def train(model, sess, config, dirname, feed):
 	features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 	batch_size, time_size = config.getint('global', 'batch_size'), config.getint('global', 'time_size')
+	total_loss, inf_count = 0.0, 0
 
 	for dirpath, dirnames, filenames in os.walk(dirname):
 		for filename in filenames:
@@ -39,7 +40,9 @@ def train(model, sess, config, dirname, feed):
 					features.append(np.loadtxt(os.path.join(dirpath, '%s_%i.mfcc' %(line.split()[0], config.getint('mfcc', 'n_mfcc')))))
 
 					if lenfeatures + 1 == batch_size:
-						sess.run([model['optim']], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
+						loss, _ = sess.run([model['loss'], model['optim']], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
+						if math.isinf(loss) or math.isnan(loss): inf_count += 1
+						else: total_loss += loss
 						features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 
 def test(model, sess, config, dirname, feed):
@@ -60,7 +63,7 @@ def test(model, sess, config, dirname, feed):
 
 					if lenfeatures + 1 == batch_size:
 						loss = sess.run(model['loss'], feed_dict = feed(features, labelslen, labelsind, labelsval, batch_size, time_size))
-						if loss == float('inf'): inf_count += 1
+						if math.isinf(loss) or math.isnan(loss): inf_count += 1
 						else: total_loss += loss
 						features, labelslen, labelsind, labelsval = list(), list(), list(), list()
 
