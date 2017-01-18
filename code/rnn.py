@@ -29,10 +29,10 @@ def rnn(model, config, scope, connect = None):
 
 		with tf.variable_scope('stacks'), tf.name_scope('stacks'):
 			if config.get(scope, 'link_type') == 'rnn':
-				model['%s_rnns' %scope] = tf.nn.rnn_cell.MultiRNNCell([model['%s_rnn' %scope]] * config.getint(scope, 'layer_size'))
+				model['%s_rnns' %scope] = tf.nn.rnn_cell.MultiRNNCell([model['%s_rnn' %scope]] * config.getint(scope, 'layer_size'), state_is_tuple = True)
 			elif config.get(scope, 'link_type') == 'bidirectional_rnn':
-				model['%s_rnns_fw' %scope] = tf.nn.rnn_cell.MultiRNNCell([model['%s_rnn_fw' %scope]] * config.getint(scope, 'layer_size'))
-				model['%s_rnns_bw' %scope] = tf.nn.rnn_cell.MultiRNNCell([model['%s_rnn_bw' %scope]] * config.getint(scope, 'layer_size'))
+				model['%s_rnns_fw' %scope] = tf.nn.rnn_cell.MultiRNNCell([model['%s_rnn_fw' %scope]] * config.getint(scope, 'layer_size'), state_is_tuple = True)
+				model['%s_rnns_bw' %scope] = tf.nn.rnn_cell.MultiRNNCell([model['%s_rnn_bw' %scope]] * config.getint(scope, 'layer_size'), state_is_tuple = True)
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
 			if config.get(scope, 'link_type') == 'rnn':
