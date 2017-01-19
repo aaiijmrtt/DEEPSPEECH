@@ -21,7 +21,7 @@ def ce(model, config, scope, connect):
 			model['%s_labels' %scope] = tf.one_hot(model['%s_labels_collapsed' %scope], model['%s_out1length' %scope], name = '%s_labels' %scope)
 
 		with tf.variable_scope('loss'), tf.name_scope('loss'):
-			model['%s_loss' %scope] = tf.reduce_sum(-tf.mul(model['%s_labels' %scope], tf.log(model['%s_inputs' %scope])), name = '%s_loss' %scope)
+			model['%s_loss' %scope] = tf.reduce_sum(-tf.mul(model['%s_labels' %scope], tf.log(tf.add(model['%s_inputs' %scope], 1e-10))), name = '%s_loss' %scope)
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
 			model['%s_output' %scope] = model['%s_inputs' %scope]
