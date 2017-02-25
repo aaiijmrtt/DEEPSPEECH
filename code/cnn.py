@@ -33,11 +33,11 @@ def cnn(model, config, scope, connect = None):
 			with tf.variable_scope('convolution%i' %_), tf.name_scope('convolution%i' %_):
 				model['%s_convolution%i' %(scope, _)] = tf.nn.conv2d(model['%s_transform%i' %(scope, _)], model['%s_filter%i' %(scope, _)], model['%s_stride%i' %(scope, _)], 'VALID')
 				model['%s_out1length' %scope] = int(math.ceil(float(model['%s_out1length' %scope] - sizes['clength'] + 1) / float(sizes['cstep'])))
-				model['%s_out2length' %scope] = tf.to_int32(tf.ceil(tf.div(tf.to_float(tf.sub(model['%s_out2length' %scope], sizes['clength'] - 1)), tf.to_float(sizes['cstep']))))
+				model['%s_out2length' %scope] = tf.to_int32(tf.ceil(tf.div(tf.to_float(tf.subtract(model['%s_out2length' %scope], sizes['clength'] - 1)), tf.to_float(sizes['cstep']))))
 				model['%s_maxout2length' %scope] = int(math.ceil(float(model['%s_maxout2length' %scope] - sizes['clength'] + 1) / float(sizes['cstep'])))
 				model['%s_pooling%i' %(scope, _)] = getattr(tf.nn, '%s_pool' %config.get(scope, 'pool'))(model['%s_convolution%i' %(scope, _)], [1, sizes['plength'], sizes['plength'], 1], [1, sizes['pstep'], sizes['pstep'], 1], 'VALID')
 				model['%s_out1length' %scope] = int(math.ceil(float(model['%s_out1length' %scope] - sizes['plength'] + 1) / float(sizes['pstep'])))
-				model['%s_out2length' %scope] = tf.to_int32(tf.ceil(tf.div(tf.to_float(tf.sub(model['%s_out2length' %scope], sizes['plength'] - 1)), tf.to_float(sizes['pstep']))))
+				model['%s_out2length' %scope] = tf.to_int32(tf.ceil(tf.div(tf.to_float(tf.subtract(model['%s_out2length' %scope], sizes['plength'] - 1)), tf.to_float(sizes['pstep']))))
 				model['%s_maxout2length' %scope] = int(math.ceil(float(model['%s_maxout2length' %scope] - sizes['plength'] + 1) / float(sizes['pstep'])))
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
