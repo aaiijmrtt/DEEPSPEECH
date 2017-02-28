@@ -18,7 +18,7 @@ def py(model, config, scope, connect = None):
 			model['%s_factor' %scope] = config.getint(scope, 'factor')
 			model['%s_out0length' %scope] = model['%s_in0length' %scope]
 			model['%s_out1length' %scope] = model['%s_in1length' %scope] * model['%s_factor' %scope]
-			model['%s_out2length' %scope] = tf.div(tf.sub(model['%s_in2length' %scope], tf.mod(model['%s_in2length' %scope], model['%s_factor' %scope])), model['%s_factor' %scope])
+			model['%s_out2length' %scope] = tf.div(tf.subtract(model['%s_in2length' %scope], tf.mod(model['%s_in2length' %scope], model['%s_factor' %scope])), model['%s_factor' %scope])
 			model['%s_maxout2length' %scope] = (model['%s_maxin2length' %scope] - model['%s_maxin2length' %scope] % model['%s_factor' %scope]) / model['%s_factor' %scope]
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
