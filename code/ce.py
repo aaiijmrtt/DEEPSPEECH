@@ -1,13 +1,13 @@
 import tensorflow as tf
 
-def ce(model, config, scope, connect):
+def ce(model, config, scope, connect, threshold = 1e-5):
 	with tf.variable_scope(scope), tf.name_scope(scope):
 		with tf.variable_scope('inputs'), tf.name_scope('inputs'):
 			model['%s_in0length' %scope] = model['%s_out0length' %connect]
 			model['%s_in1length' %scope] = model['%s_out1length' %connect]
 			model['%s_in2length' %scope] = model['%s_out2length' %connect]
 			model['%s_maxin2length' %scope] = model['%s_maxout2length' %connect]
-			model['%s_inputs' %scope] = tf.nn.softmax(model['%s_outputs' %connect], name = '%s_inputs' %scope)
+			model['%s_inputs' %scope] = tf.clip_by_value(tf.nn.softmax(model['%s_outputs' %connect]), threshold, 1. - threshold, name = '%s_inputs' %scope)
 			model['%s_out0length' %scope] = model['%s_in0length' %scope]
 			model['%s_out1length' %scope] = model['%s_in1length' %scope]
 			model['%s_out2length' %scope] = tf.placeholder(tf.int32, [model['%s_in0length' %scope]], '%s_out2length' %scope)
@@ -21,7 +21,7 @@ def ce(model, config, scope, connect):
 			model['%s_labels' %scope] = tf.one_hot(model['%s_labels_collapsed' %scope], model['%s_out1length' %scope], name = '%s_labels' %scope)
 
 		with tf.variable_scope('loss'), tf.name_scope('loss'):
-			model['%s_loss' %scope] = tf.reduce_sum(-tf.multiply(model['%s_labels' %scope], tf.log(tf.add(model['%s_inputs' %scope], 1e-10))), name = '%s_loss' %scope)
+			model['%s_loss' %scope] = tf.reduce_sum(-tf.multiply(model['%s_labels' %scope], tf.log(model['%s_inputs' %scope])), name = '%s_loss' %scope)
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
 			model['%s_output' %scope] = model['%s_inputs' %scope]
