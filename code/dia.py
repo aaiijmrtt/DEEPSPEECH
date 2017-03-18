@@ -19,8 +19,9 @@ def dia(model, config, scope, connectsegment, connectfeature):
 			model['%s_maxout2length' %scope] = config.getint('global', 'speaker_size')
 
 		with tf.variable_scope('outputs'), tf.name_scope('outputs'):
-			model['%s_topsegmentvalues' %scope], model['%s_topsegmentindices' %scope] = tf.nn.top_k(tf.transpose(model['%s_inputs_segment' %scope], [1, 0]), 2)
+			model['%s_topsegmentvalues' %scope], model['%s_topsegmentindices' %scope] = tf.nn.top_k(tf.transpose(model['%s_inputs_segment' %scope], [1, 0]), config.getint('global', 'speaker_size'))
 			model['%s_scores' %scope] = [tf.gather(feature, index) for feature, index in zip(model['%s_inputs_feature' %scope], tf.unstack(model['%s_topsegmentindices' %scope]))]
-			model['%s_outputs' %scope] = tf.stack([tf.matmul(score, score, transpose_b = True) for score in model['%s_scores' %scope]], name = '%s_outputs' %scope)
+			model['%s_normalizedscores' %scope]  = [tf.divide(score, tf.norm(score, 2, 1, True)) for score in model['%s_scores' %scope]]
+			model['%s_outputs' %scope] = tf.add(0.5, tf.multiply(0.5, tf.stack([tf.matmul(score, score, transpose_b = True) for score in model['%s_normalizedscores' %scope]], name = '%s_outputs' %scope)))
 
 	return model
